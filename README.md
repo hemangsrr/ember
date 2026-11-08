@@ -15,7 +15,7 @@ When a controlled channel receives a disallowed message, Ember deletes it immedi
 | Commands | Messages starting with `!` or `/`. |
 | Text | Remaining written text after links/commands are ignored. |
 
-If a message contains more than one type, every present type must be enabled. For example, an image with a caption needs both **Images** and **Text** enabled. Bot messages are ignored so that the alert itself is never moderated.
+If a message contains more than one type, it stays when it contains **at least one** enabled type. For example, an image with a caption is allowed in an **Images**-only channel, and a video with “watch this” is allowed in a **Videos**-only channel. A message containing none of the enabled types is deleted. Bot messages are ignored so that the alert itself is never moderated.
 
 ## Local setup
 

@@ -34,7 +34,10 @@ async function moderateMessage(message) {
   const hasAllowedRole = roleIds.some((roleId) => message.member?.roles.cache.has(roleId));
   const roleBlocked = roleIds.length > 0 && !hasAllowedRole;
   const classified = classify(message);
-  const contentBlocked = TYPES.some((type) => classified[type] && !settings.allowed?.[type]);
+  // A message is permitted when it contains at least one enabled content type.
+  // This lets a video-only channel accept a video with a caption such as “watch this”.
+  const contentAllowed = TYPES.some((type) => classified[type] && settings.allowed?.[type]);
+  const contentBlocked = !contentAllowed;
 
   if (!roleBlocked && !contentBlocked) return;
 
