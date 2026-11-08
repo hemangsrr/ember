@@ -1,0 +1,19 @@
+{
+  "name": "ember-discord-moderator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Discord.js moderation bot with an Express administration dashboard.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1"
+  }
+}
