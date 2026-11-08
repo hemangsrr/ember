@@ -40,7 +40,7 @@ If a message contains more than one type, every present type must be enabled. Fo
 1. Go to the [Discord Developer Portal](https://discord.com/developers/applications), choose **New Application**, give it a name, and create it.
 2. Select **Bot** in the left navigation, then choose **Add Bot**. Under **Token**, choose **Reset Token** (if necessary), copy the token, and put it in `.env` as `DISCORD_TOKEN`. Treat this exactly like a password: never commit or share it.
 3. Still on the Bot page, turn on **Message Content Intent** under *Privileged Gateway Intents*. Ember needs this to inspect normal message content. **Server Members Intent** is also used to reliably evaluate members' selected roles.
-4. Copy the **Application ID** from **General Information** into `DISCORD_CLIENT_ID` in `.env` (and Render). Open **OAuth2 → URL Generator**, select `bot` and `applications.commands`, then select at least View Channels, Send Messages, Manage Messages, and Read Message History. Copy the generated URL, open it, choose your server, and authorize the bot. You need **Manage Server** permission. Once `DISCORD_CLIENT_ID` is set, the dashboard also has an **Install Ember to a server** link with those permissions preselected.
+4. Copy the **Application ID** from **General Information** into `DISCORD_CLIENT_ID` in `.env` (and Railway). Open **OAuth2 → URL Generator**, select `bot` and `applications.commands`, then select at least View Channels, Send Messages, Manage Messages, and Read Message History. Copy the generated URL, open it, choose your server, and authorize the bot. You need **Manage Server** permission. Once `DISCORD_CLIENT_ID` is set, the dashboard also has an **Install Ember to a server** link with those permissions preselected.
 5. Ensure Ember's bot role is above roles whose messages it must delete. It also needs View Channel, Send Messages, and Manage Messages in every controlled channel.
 6. Return to the dashboard, select the server, channel, roles (if applicable), and allowed content types, then choose **Enable channel control**.
 
@@ -55,25 +55,36 @@ Ember reads message text, links, and attachments, so it requires the **Message C
 
 This is separate from **App Verification**, which is required when the app needs to grow beyond 100 servers. Complete the **App Verification** checklist in the Developer Portal when applicable; it includes identity verification for the owning developer/team. Discord's current guidance: [app verification](https://support-dev.discord.com/hc/en-us/articles/23926564536471-How-Do-I-Get-My-App-Verified) and [privileged-intent access](https://support-dev.discord.com/hc/en-us/articles/40281523410967-Changes-to-Privileged-Intent-Access-for-Discord-Apps).
 
-## Deploy on Render
+## Deploy on Railway
 
-This project includes `render.yaml`, but you can deploy through Render's web UI too.
+1. Push this repository to GitHub. Do not push `.env`.
+2. At [Railway](https://railway.com/), choose **New Project → Deploy from GitHub Repo**, connect GitHub if prompted, and select this repository. Railway's Node build system detects `package.json`, installs dependencies, and uses the `npm start` script.
+3. Add the runtime variables to the **ember service**, not only Project Settings:
+   - Simplest option: select the **ember** service in the project canvas, open its **Variables** tab, and add `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DASHBOARD_USERNAME`, and `DASHBOARD_PASSWORD` there.
+   - If you keep them under **Project Settings → Shared Variables**, click **Share** beside each variable, select the **ember** service, and apply/deploy the staged changes. Railway creates a reference variable in the service (for example, `DISCORD_TOKEN=${{ shared.DISCORD_TOKEN }}`). Defining a shared variable alone does not pass it into a service.
 
-1. Push this repository to GitHub, GitLab, or Bitbucket. Do not push `.env`.
-2. At [Render](https://render.com/), select **New → Blueprint** and connect the repository. Render reads `render.yaml` and creates a Node web service. Alternatively choose **New → Web Service**, select the repository, set build command to `npm ci`, and start command to `npm start`.
-3. In the service's **Environment** settings, add these values: `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DASHBOARD_USERNAME`, and `DASHBOARD_PASSWORD`. Do not add `PORT`; Render provides it automatically.
-4. Deploy. Once live, use its `https://your-service.onrender.com/` URL to open the dashboard. Your browser will ask for dashboard credentials.
-5. Check `https://your-service.onrender.com/health` to confirm the web process is healthy. `discordReady: true` means the bot has connected to Discord.
+   Treat the token and password as secrets. Do not set `PORT`; Railway supplies it.
+4. In the service's **Settings → Public Networking**, choose **Generate Domain**. Let Railway automatically detect the target port. Do **not** manually set it to `3000`: Railway injects a `PORT` value for the running service, and the public-domain target port must match that value. If you have already created the domain with port `3000`, edit the domain and change its target port to the port shown in the latest deploy log's `Dashboard listening on port ...` line (commonly `8080` on Railway), then redeploy. Railway provides a `*.up.railway.app` URL; use it to open the dashboard and sign in with the dashboard credentials.
+5. Optional but recommended: configure Railway's healthcheck to request `/health`. The endpoint returns `discordReady: true` once the bot is connected.
+6. Every GitHub push will trigger an automatic redeploy by default. Use the service's deployment logs to confirm `Logged in as ...` after each deploy.
 
-### Important Render persistence note
+### Important Railway persistence note
 
-Channel settings are stored locally in `data/settings.json`. Render's standard filesystem is ephemeral, so settings can disappear after a redeploy or restart. For production, attach a Render Persistent Disk at the app's `data` directory (available on eligible paid services), or replace `src/store.js` with a hosted database such as Postgres. The bot must run continuously to moderate messages.
+Channel settings are stored locally in `data/settings.json`. Railway's ordinary filesystem is ephemeral, so settings can disappear after a redeploy. To persist them:
+
+1. Open the Railway project canvas and right-click an empty area (or use the command palette) to create a **Volume**.
+2. Choose the **ember** service when Railway asks which service to connect.
+3. Name it something clear, such as `ember-settings`, and set the **mount path** to exactly `/app/data`.
+4. Create/attach the volume and let Railway redeploy the service. Do not set `RAILWAY_VOLUME_MOUNT_PATH` yourself; Railway adds it automatically.
+5. After the deployment, configure a controlled channel in the dashboard, then trigger a harmless redeploy and confirm it still appears under **Active controls**.
+
+The `/app/data` path is important: Railway places this Node project at `/app`, while Ember writes to `data/settings.json`. Attaching a new blank volume replaces the former ephemeral `data` directory, so re-create any controls configured before the volume was attached. You can later make manual or scheduled backups from the volume settings. The bot must stay running continuously to moderate messages.
 
 ## Security and operational notes
 
-- The dashboard uses HTTP Basic Auth. Set a strong, unique password and access it through Render's HTTPS URL.
-- Keep the Discord token only in Render environment variables and your local ignored `.env` file.
-- The dashboard lists servers currently cached by the connected bot. If it has just joined a server, refresh after Render logs show `Logged in as ...`.
+- The dashboard uses HTTP Basic Auth. Set a strong, unique password and access it through Railway's HTTPS URL.
+- Keep the Discord token only in Railway variables and your local ignored `.env` file.
+- The dashboard lists servers currently cached by the connected bot. If it has just joined a server, refresh after Railway logs show `Logged in as ...`.
 - Disable a control from the **Active controls** list to restore normal message handling for that channel.
 
 ## Project layout

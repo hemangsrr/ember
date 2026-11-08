@@ -14,4 +14,5 @@ client.login(process.env.DISCORD_TOKEN);
 
 const app = dashboard(client);
 const port = Number(process.env.PORT || 3000);
-app.listen(port, () => console.log(`Dashboard listening on port ${port}`));
+// Railway's public proxy reaches services through the injected PORT on all interfaces.
+app.listen(port, '0.0.0.0', () => console.log(`Dashboard listening on port ${port}`));
