@@ -3,7 +3,7 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const { moderateMessage } = require('./moderation');
 const { dashboard } = require('./dashboard');
 
-for (const key of ['DISCORD_TOKEN', 'DASHBOARD_USERNAME', 'DASHBOARD_PASSWORD']) {
+for (const key of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DISCORD_CLIENT_SECRET', 'DISCORD_REDIRECT_URI', 'DASHBOARD_USERNAME', 'DASHBOARD_PASSWORD', 'SESSION_SECRET']) {
   if (!process.env[key]) throw new Error(`Missing required environment variable: ${key}`);
 }
 

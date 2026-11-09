@@ -1,4 +1,4 @@
-const { getChannel } = require('./store');
+const { getChannel, recordDeletion } = require('./store');
 
 const URL_PATTERN = /(?:https?:\/\/|www\.)[^\s<]+/gi;
 const TYPES = ['images', 'videos', 'links', 'commands', 'text'];
@@ -43,6 +43,17 @@ async function moderateMessage(message) {
 
   try {
     await message.delete();
+    await recordDeletion({
+      guildId: message.guildId,
+      channelId: message.channelId,
+      channelName: message.channel.name,
+      username: message.author.tag,
+      userId: message.author.id,
+      messageContent: message.content || '[No text content]',
+      messageId: message.id,
+      deletedAt: new Date().toISOString(),
+      reason: roleBlocked ? 'Posting role is not allowed' : 'Disallowed content'
+    }).catch((error) => console.error(`Could not write deletion log for ${message.id}:`, error.message));
     const alert = await message.channel.send({
       content: `<@${message.author.id}> only ${allowedDescription(settings)} allowed here.`,
       allowedMentions: { users: [message.author.id] }

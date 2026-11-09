@@ -4,6 +4,8 @@ Ember is a Discord.js bot with a small, password-protected Express dashboard. It
 
 When a controlled channel receives a disallowed message, Ember deletes it immediately and sends a short mention alert. The alert removes itself after 10 seconds.
 
+Every deletion is recorded in the persistent settings store with the username, user ID, message content, message ID, channel, reason, and timestamp. Open a server in the dashboard and choose **Deletion log** to view its moderation history. Because message content is stored, ensure this retention is appropriate for your server's privacy policy.
+
 ## What channel control checks
 
 | Control | Behaviour |
@@ -44,6 +46,26 @@ If a message contains more than one type, it stays when it contains **at least o
 5. Ensure Ember's bot role is above roles whose messages it must delete. It also needs View Channel, Send Messages, and Manage Messages in every controlled channel.
 6. Return to the dashboard, select the server, channel, roles (if applicable), and allowed content types, then choose **Enable channel control**.
 
+### Dashboard sign-in and Discord OAuth
+
+The dashboard landing page offers two sign-in choices:
+
+- **Administrator login** uses `DASHBOARD_USERNAME` and `DASHBOARD_PASSWORD` and can view/manage every server where Ember is installed.
+- **Continue with Discord** uses Discord OAuth. It only shows mutual servers where the signed-in user has **Administrator** or **Manage Server** permission.
+
+To enable Discord sign-in:
+
+1. In Discord Developer Portal, open the Ember application and go to **OAuth2**. Copy its **Client Secret** into `DISCORD_CLIENT_SECRET`. Keep it private, like the bot token.
+2. In **OAuth2 → General**, add this redirect URL exactly (replace the hostname with your Railway public domain):
+
+   ```text
+   https://your-service.up.railway.app/auth/discord/callback
+   ```
+
+3. Set `DISCORD_REDIRECT_URI` to that exact same URL. The values must match character-for-character.
+4. Set `SESSION_SECRET` to a long random value. For example, generate one locally with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+5. Add `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI`, and `SESSION_SECRET` to Railway's **ember service → Variables** (or share them into that service), then redeploy.
+
 ### Apps in a server with 10,000+ users: privileged-intent review
 
 Ember reads message text, links, and attachments, so it requires the **Message Content** privileged intent. It also requests **Guild Members** so it can reliably identify a message author's roles for the allowed-role rule. A server with more than 10,000 members can put the app over Discord's current 10,000 **unique users who can access the app** threshold, so plan for a privileged-intent review.
@@ -60,7 +82,7 @@ This is separate from **App Verification**, which is required when the app needs
 1. Push this repository to GitHub. Do not push `.env`.
 2. At [Railway](https://railway.com/), choose **New Project → Deploy from GitHub Repo**, connect GitHub if prompted, and select this repository. Railway's Node build system detects `package.json`, installs dependencies, and uses the `npm start` script.
 3. Add the runtime variables to the **ember service**, not only Project Settings:
-   - Simplest option: select the **ember** service in the project canvas, open its **Variables** tab, and add `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DASHBOARD_USERNAME`, and `DASHBOARD_PASSWORD` there.
+   - Simplest option: select the **ember** service in the project canvas, open its **Variables** tab, and add `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI`, `DASHBOARD_USERNAME`, `DASHBOARD_PASSWORD`, and `SESSION_SECRET` there.
    - If you keep them under **Project Settings → Shared Variables**, click **Share** beside each variable, select the **ember** service, and apply/deploy the staged changes. Railway creates a reference variable in the service (for example, `DISCORD_TOKEN=${{ shared.DISCORD_TOKEN }}`). Defining a shared variable alone does not pass it into a service.
 
    Treat the token and password as secrets. Do not set `PORT`; Railway supplies it.
@@ -82,7 +104,7 @@ The `/app/data` path is important: Railway places this Node project at `/app`, w
 
 ## Security and operational notes
 
-- The dashboard uses HTTP Basic Auth. Set a strong, unique password and access it through Railway's HTTPS URL.
+- The dashboard uses an administrator credential session or Discord OAuth. Set a strong, unique administrator password and access it through Railway's HTTPS URL.
 - Keep the Discord token only in Railway variables and your local ignored `.env` file.
 - The dashboard lists servers currently cached by the connected bot. If it has just joined a server, refresh after Railway logs show `Logged in as ...`.
 - Disable a control from the **Active controls** list to restore normal message handling for that channel.

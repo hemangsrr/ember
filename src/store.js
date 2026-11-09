@@ -6,9 +6,10 @@ let queue = Promise.resolve();
 
 async function read() {
   try {
-    return JSON.parse(await fs.readFile(filePath, 'utf8'));
+    const data = JSON.parse(await fs.readFile(filePath, 'utf8'));
+    return { channels: data.channels || {}, deletions: data.deletions || [] };
   } catch (error) {
-    if (error.code === 'ENOENT') return { channels: {} };
+    if (error.code === 'ENOENT') return { channels: {}, deletions: [] };
     throw error;
   }
 }
@@ -44,4 +45,17 @@ function removeChannel(channelId) {
   return queue;
 }
 
-module.exports = { getChannel, allChannels, saveChannel, removeChannel };
+function recordDeletion(deletion) {
+  queue = queue.then(async () => {
+    const data = await read();
+    data.deletions.unshift(deletion);
+    await write(data);
+  });
+  return queue;
+}
+
+function deletionsForGuild(guildId) {
+  return read().then((data) => data.deletions.filter((deletion) => deletion.guildId === guildId));
+}
+
+module.exports = { getChannel, allChannels, saveChannel, removeChannel, recordDeletion, deletionsForGuild };
